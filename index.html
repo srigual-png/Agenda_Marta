@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agenda escolar · Marta Quilez</title>
+  <style>
+    :root{
+      --bg:#f5f6f8;
+      --card:#ffffff;
+      --line:#d9dde3;
+      --head:#3f4754;
+      --accent:#7a3e8e;
+      --text:#1f2937;
+      --muted:#6b7280;
+      --slot:#eef1f4;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Calibri, Arial, sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
+    header{
+      position:sticky;
+      top:0;
+      z-index:10;
+      background:rgba(245,246,248,.96);
+      backdrop-filter:blur(8px);
+      border-bottom:1px solid var(--line);
+      padding:12px 16px;
+    }
+    .topbar{
+      max-width:1700px;
+      margin:auto;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:space-between;
+    }
+    h1{font-size:1.35rem;margin:0}
+    .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    button{
+      border:1px solid var(--line);
+      background:white;
+      padding:8px 12px;
+      border-radius:8px;
+      cursor:pointer;
+      font:inherit;
+    }
+    button.primary{
+      background:var(--accent);
+      color:#fff;
+      border-color:var(--accent);
+    }
+    .view-toggle button.active{
+      background:var(--head);
+      color:#fff;
+      border-color:var(--head);
+    }
+    .periodlabel{
+      font-weight:700;
+      color:var(--head);
+      min-width:260px;
+      text-align:center;
+    }
+    main{max-width:1700px;margin:0 auto;padding:16px}
+
+    /* VISTA SETMANAL */
+    .week{
+      display:grid;
+      grid-template-columns:repeat(5,minmax(260px,1fr));
+      gap:12px;
+      align-items:start;
+    }
+    .day{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:12px;
+      overflow:hidden;
+      box-shadow:0 1px 4px rgba(0,0,0,.05);
+    }
+    .dayhead{
+      background:var(--head);
+      color:#fff;
+      padding:12px;
+      text-align:center;
+      font-weight:700;
+      font-size:1.02rem;
+    }
+    .today .dayhead{background:var(--accent)}
+    .slot{
+      display:grid;
+      grid-template-columns:82px 92px 1fr;
+      min-height:88px;
+      border-top:1px solid var(--line);
+    }
+    .time,.subject{
+      padding:8px;
+      border-right:1px solid var(--line);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      font-size:.88rem;
+    }
+    .time{background:var(--slot);font-weight:700}
+    .subject{font-weight:700;white-space:pre-line}
+    textarea{
+      width:100%;
+      min-height:86px;
+      border:0;
+      resize:vertical;
+      padding:9px;
+      font:inherit;
+      outline:none;
+      background:#fffdf7;
+    }
+    textarea:focus{box-shadow:inset 0 0 0 2px rgba(122,62,142,.22)}
+    .printText{display:none;white-space:pre-wrap;word-break:break-word}
+    .break{
+      min-height:28px;
+      background:#e5e7eb;
+      border-top:1px solid var(--line);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color:var(--muted);
+      font-size:.8rem;
+      font-style:italic;
+    }
+
+    /* VISTA MENSUAL */
+    .month{display:none}
+    .month-grid{
+      display:grid;
+      grid-template-columns:repeat(5,1fr);
+      gap:8px;
+    }
+    .month-weekday{
+      background:var(--head);
+      color:#fff;
+      text-align:center;
+      padding:9px;
+      font-weight:700;
+      border-radius:8px;
+    }
+    .month-cell{
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:10px;
+      min-height:220px;
+      padding:7px;
+      overflow:hidden;
+    }
+    .month-cell.other-month{opacity:.38}
+    .month-cell.today{outline:2px solid var(--accent)}
+    .month-date{
+      font-weight:700;
+      margin-bottom:6px;
+      padding-bottom:5px;
+      border-bottom:1px solid var(--line);
+    }
+    .month-entry{
+      font-size:.78rem;
+      line-height:1.2;
+      padding:3px 0;
+      border-bottom:1px dotted #ddd;
+    }
+    .month-entry:last-child{border-bottom:0}
+    .month-time{font-weight:700}
+    .month-subject{font-weight:700}
+    .month-line{
+      white-space:normal;
+      word-break:break-word;
+    }
+    .month-note-inline{
+      font-weight:400;
+      color:#333;
+      white-space:pre-wrap;
+    }
+    .empty-day{
+      color:var(--muted);
+      font-size:.78rem;
+      font-style:italic;
+    }
+
+    .footer-actions{
+      margin-top:14px;
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .hint{color:var(--muted);font-size:.9rem}
+    input[type=file]{display:none}
+
+    @media (max-width:1100px){
+      .week{
+        display:flex;
+        overflow-x:auto;
+        scroll-snap-type:x mandatory;
+        padding-bottom:8px;
+      }
+      .day{min-width:88vw;scroll-snap-align:start}
+      .month-grid{grid-template-columns:repeat(5,minmax(210px,1fr));overflow-x:auto}
+    }
+    @media (max-width:640px){
+      header{padding:10px}
+      main{padding:10px}
+      h1{font-size:1.1rem}
+      .periodlabel{min-width:unset;width:100%;order:3}
+      .day{min-width:94vw}
+      .slot{grid-template-columns:72px 78px 1fr}
+      .time,.subject{font-size:.8rem;padding:6px}
+      textarea{font-size:.95rem}
+      .month-grid{grid-template-columns:repeat(5,190px)}
+      .month-cell{min-height:190px}
+    }
+
+    .syncbar{
+      max-width:1700px;
+      margin:8px auto 0;
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .sync-status{
+      padding:6px 10px;
+      border-radius:999px;
+      background:#eef1f4;
+      color:#374151;
+      font-size:.9rem;
+    }
+    .sync-status.ok{background:#e8f5e9;color:#1b5e20}
+    .sync-status.warn{background:#fff3e0;color:#8a4b00}
+    .sync-status.err{background:#fdecec;color:#8b1e1e}
+
+    /* IMPRESSIÓ */
+    @media print{
+      @page{size:A4 landscape;margin:6mm}
+      body{background:#fff;color:#000}
+      header{
+        position:static;
+        border:0;
+        padding:0 0 4mm 0;
+        background:#fff;
+      }
+      h1{font-size:12pt; margin:0 0 1mm 0}
+      .controls,.footer-actions,.syncbar{display:none !important}
+      .topbar{display:block}
+      .periodlabel{
+        width:auto;
+        min-width:0;
+        text-align:left;
+        margin:0 0 2mm 0;
+        font-size:8.5pt;
+        color:#000;
+      }
+      main{max-width:none;padding:0;margin:0}
+
+      /* Setmanal imprimible */
+      body.print-week #weekView{display:block !important}
+      body.print-week #monthView{display:none !important}
+      body.print-week .week{
+        display:grid !important;
+        grid-template-columns:repeat(5,minmax(0,1fr));
+        gap:2mm;
+        overflow:visible;
+        width:calc(100% - 3mm);
+        margin-right:3mm;
+        break-before:auto;
+        page-break-before:auto;
+        break-inside:auto;
+        page-break-inside:auto;
+      }
+      body.print-week .day{
+        min-width:0 !important;
+        box-shadow:none;
+        border:1px solid #777;
+        border-radius:0;
+        break-inside:auto;
+        page-break-inside:auto;
+      }
+      body.print-week .day:last-child{
+        border-right:1px solid #777 !important;
+      }
+      body.print-week .dayhead{
+        background:#ddd !important;
+        color:#000 !important;
+        padding:4px;
+        font-size:9pt;
+        border-bottom:1px solid #777;
+      }
+      body.print-week .today .dayhead{background:#ddd !important;color:#000 !important}
+      body.print-week .slot{
+        grid-template-columns:16mm 18mm minmax(0,1fr);
+        min-height:13mm;
+        border-top:1px solid #aaa;
+      }
+      body.print-week .time,
+      body.print-week .subject{
+        padding:1.5px;
+        font-size:6.7pt;
+        border-right:1px solid #aaa;
+        overflow-wrap:anywhere;
+      }
+      body.print-week .time{background:#eee !important}
+      body.print-week textarea{display:none !important}
+      body.print-week .printText{
+        display:block !important;
+        min-height:12mm;
+        padding:2px;
+        font-size:7.2pt;
+        line-height:1.15;
+        background:#fff;
+        white-space:pre-wrap;
+        word-break:normal;
+        overflow-wrap:break-word;
+      }
+      body.print-week .break{
+        min-height:3mm;
+        background:#eee !important;
+        font-size:6pt;
+      }
+
+      /* Mensual imprimible: 5 columnes, dilluns-divendres */
+      body.print-month #weekView{display:none !important}
+      body.print-month #monthView{display:block !important}
+      body.print-month .month-grid{
+        display:grid !important;
+        grid-template-columns:repeat(5,1fr);
+        gap:1.5mm;
+        overflow:visible;
+      }
+      body.print-month .month-weekday{
+        background:#ddd !important;
+        color:#000 !important;
+        border:1px solid #777;
+        border-radius:0;
+        padding:2px;
+        font-size:8pt;
+      }
+      body.print-month .month-cell{
+        border:1px solid #999;
+        border-radius:0;
+        min-height:34mm;
+        max-height:34mm;
+        padding:2px;
+        overflow:hidden;
+        break-inside:avoid;
+      }
+      body.print-month .month-cell.other-month{opacity:.35}
+      body.print-month .month-cell.today{outline:none}
+      body.print-month .month-date{
+        margin-bottom:1px;
+        padding-bottom:1px;
+        font-size:7.5pt;
+      }
+      body.print-month .month-entry{
+        font-size:5.9pt;
+        line-height:1.05;
+        padding:1px 0;
+        border-bottom:0;
+      }
+      body.print-month .month-line,
+      body.print-month .month-note-inline{
+        font-size:5.9pt;
+        line-height:1.05;
+      }
+      body.print-month .empty-day{font-size:6pt}
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div class="topbar">
+    <h1>Agenda escolar · Marta Quilez</h1>
+
+    <div class="view-toggle controls">
+      <button id="weekViewBtn" class="active">Setmanal</button>
+      <button id="monthViewBtn">Mensual</button>
+    </div>
+
+    <div class="periodlabel" id="periodLabel"></div>
+
+    <div class="controls">
+      <button id="prevBtn">← Anterior</button>
+      <button id="todayBtn" class="primary">Avui</button>
+      <button id="nextBtn">Següent →</button>
+      <button id="printBtn">🖨️ Imprimeix</button>
+    </div>
+  </div>
+  <div class="syncbar">
+    <button id="googleLoginBtn" type="button">☁️ Connecta amb Google</button>
+    <button id="googleLogoutBtn" type="button" style="display:none">Desconnecta</button>
+    <span id="syncStatus" class="sync-status warn">Firebase pendent de configurar</span>
+  </div>
+</header>
+
+<main>
+  <section id="weekView">
+    <div class="week" id="week"></div>
+  </section>
+
+  <section id="monthView" class="month">
+    <div class="month-grid" id="monthGrid"></div>
+  </section>
+
+  <div class="footer-actions">
+    <button id="exportBtn">Exporta còpia</button>
+    <label><button type="button" id="importFake">Importa còpia</button><input id="importFile" type="file" accept=".json"></label>
+    <button id="clearPeriodBtn">Esborra notes del període</button>
+    <span class="hint">Les notes es desen automàticament en aquest dispositiu.</span>
+  </div>
+</main>
+
+<script>
+const schedule = {
+  1: [
+    ["11:30-12:30",""],["12:30-13:30",""],["13:30-14:30",""],
+    ["14:30-15:00","C056\n(Aula 5)"],["15:00-16:00","M0105\n(Aula 5)"],
+    ["16:00-17:00","M0101\n(Aula 5)"],["17:00-18:00","M0101\n(Aula 5)"],
+    ["BREAK",""],["18:30-19:30","M0100\n(Laboratori)"],["19:30-20:30","M0102\n(Laboratori)"]
+  ],
+  2: [
+    ["11:30-12:30",""],["12:30-13:30",""],["13:30-14:30",""],
+    ["14:30-15:00","M0102\n(Laboratori)"],["15:00-16:00","M0102\n(Laboratori)"],
+    ["16:00-17:00","M0101\n(Laboratori)"],["17:00-18:00","Tutoria\n(Laboratori)"],
+    ["BREAK",""],["18:30-19:30","M0099\n(Aula 5)"],["19:30-20:30","M1708\n(Laboratori)"]
+  ],
+  3: [
+    ["11:30-12:30",""],["12:30-13:30",""],["13:30-14:30","CLAUSTRE"],
+    ["14:30-15:00","M0102\n(Laboratori)"],["15:00-16:00","M0102\n(Laboratori)"],
+    ["16:00-17:00","P"],["17:00-18:00","M0101\n(Laboratori)"],
+    ["BREAK",""],["18:30-19:30","M0100\n(Laboratori)"],["19:30-20:30","M1713\n(Aula 5)"]
+  ],
+  4: [
+    ["11:30-12:30",""],["12:30-13:30",""],["13:30-14:30",""],
+    ["14:30-15:00","C056\n(Aula 5)"],["15:00-16:00","M0105\n(Aula 5)"],
+    ["16:00-17:00","M0100\n(Laboratori)"],["17:00-18:00","M0061\n(Laboratori)"],
+    ["BREAK",""],["18:30-19:30","M1713\n(Aula 5)"],["19:30-20:30","M1713\n(Aula 5)"]
+  ],
+  5: [
+    ["11:30-12:30",""],["12:30-13:30",""],["13:30-14:30",""],["14:30-15:00",""],
+    ["15:00-16:00","M0101\n(Laboratori)"],["16:00-17:00","M0102\n(Laboratori)"],
+    ["17:00-18:00",""],["BREAK",""],["18:30-19:30",""],["19:30-20:30",""]
+  ]
+};
+
+const dayNames = ["diumenge","dilluns","dimarts","dimecres","dijous","divendres","dissabte"];
+const monthNames = ["gener","febrer","març","abril","maig","juny","juliol","agost","setembre","octubre","novembre","desembre"];
+const weekdayShort = ["Dilluns","Dimarts","Dimecres","Dijous","Divendres"];
+
+function isoDate(d){
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,"0"), day=String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${day}`;
+}
+function mondayOf(d){
+  const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());
+  const wd=x.getDay() || 7;
+  x.setDate(x.getDate()-wd+1);
+  return x;
+}
+function addDays(d,n){
+  const x=new Date(d);
+  x.setDate(x.getDate()+n);
+  return x;
+}
+function addMonths(d,n){
+  return new Date(d.getFullYear(),d.getMonth()+n,1);
+}
+function niceDate(d){
+  return `${dayNames[d.getDay()]} ${d.getDate()} d'${monthNames[d.getMonth()]}`;
+}
+function weekRangeLabel(monday){
+  const friday=addDays(monday,4);
+  return `${monday.getDate()} ${monthNames[monday.getMonth()]} – ${friday.getDate()} ${monthNames[friday.getMonth()]} ${friday.getFullYear()}`;
+}
+function monthLabel(d){
+  return `${monthNames[d.getMonth()].charAt(0).toUpperCase()+monthNames[d.getMonth()].slice(1)} ${d.getFullYear()}`;
+}
+function keyFor(date,time){
+  return `agenda:${isoDate(date)}:${time}`;
+}
+
+let currentMode="week";
+let currentMonday=mondayOf(new Date());
+let currentMonth=new Date(new Date().getFullYear(),new Date().getMonth(),1);
+
+function updateHeader(){
+  document.getElementById("periodLabel").textContent =
+    currentMode==="week" ? weekRangeLabel(currentMonday) : monthLabel(currentMonth);
+}
+
+function renderWeek(){
+  const week=document.getElementById("week");
+  week.innerHTML="";
+  const todayIso=isoDate(new Date());
+
+  for(let day=1;day<=5;day++){
+    const date=addDays(currentMonday,day-1);
+    const card=document.createElement("section");
+    card.className="day"+(isoDate(date)===todayIso?" today":"");
+
+    const head=document.createElement("div");
+    head.className="dayhead";
+    head.textContent=niceDate(date);
+    card.appendChild(head);
+
+    schedule[day].forEach(([time,subject])=>{
+      if(time==="BREAK"){
+        const br=document.createElement("div");
+        br.className="break";
+        br.textContent="Pausa";
+        card.appendChild(br);
+        return;
+      }
+
+      const row=document.createElement("div");
+      row.className="slot";
+
+      const t=document.createElement("div");
+      t.className="time";
+      t.textContent=time;
+
+      const s=document.createElement("div");
+      s.className="subject";
+      s.textContent=subject;
+
+      const wrap=document.createElement("div");
+      const ta=document.createElement("textarea");
+      ta.placeholder="Escriu aquí...";
+      const printText=document.createElement("div");
+      printText.className="printText";
+
+      const key=keyFor(date,time);
+      ta.dataset.storageKey=key;
+      const val=localStorage.getItem(key)||"";
+      ta.value=val;
+      printText.textContent=val;
+
+      ta.addEventListener("input",()=>{
+        localStorage.setItem(key,ta.value);
+        printText.textContent=ta.value;
+        if(window.firebaseSyncSet) window.firebaseSyncSet(key, ta.value);
+      });
+
+      wrap.append(ta,printText);
+      row.append(t,s,wrap);
+      card.appendChild(row);
+    });
+    week.appendChild(card);
+  }
+}
+
+function firstMondayForMonth(monthDate){
+  const first=new Date(monthDate.getFullYear(),monthDate.getMonth(),1);
+  const wd=first.getDay()||7;
+  return addDays(first,-(wd-1));
+}
+function lastFridayForMonth(monthDate){
+  const last=new Date(monthDate.getFullYear(),monthDate.getMonth()+1,0);
+  const wd=last.getDay()||7;
+  let friday=addDays(last,5-wd);
+  if(wd>5) friday=addDays(last,5-wd);
+  return friday;
+}
+
+function renderMonth(){
+  const grid=document.getElementById("monthGrid");
+  grid.innerHTML="";
+  weekdayShort.forEach(n=>{
+    const h=document.createElement("div");
+    h.className="month-weekday";
+    h.textContent=n;
+    grid.appendChild(h);
+  });
+
+  const start=firstMondayForMonth(currentMonth);
+  const end=lastFridayForMonth(currentMonth);
+  const todayIso=isoDate(new Date());
+
+  let d=new Date(start);
+  while(d<=end){
+    for(let weekday=1;weekday<=5;weekday++){
+      const date=new Date(d);
+      const cell=document.createElement("div");
+      const sameMonth=date.getMonth()===currentMonth.getMonth();
+      cell.className="month-cell"+(sameMonth?"":" other-month")+(isoDate(date)===todayIso?" today":"");
+
+      const title=document.createElement("div");
+      title.className="month-date";
+      title.textContent=`${dayNames[date.getDay()]} ${date.getDate()}`;
+      cell.appendChild(title);
+
+      const entries=schedule[weekday].filter(([time])=>time!=="BREAK");
+      let any=false;
+
+      entries.forEach(([time,subject])=>{
+        const note=localStorage.getItem(keyFor(date,time))||"";
+        if(subject || note){
+          any=true;
+          const e=document.createElement("div");
+          e.className="month-entry";
+
+          const line=document.createElement("div");
+          line.className="month-line";
+
+          const timeSpan=document.createElement("span");
+          timeSpan.className="month-time";
+          timeSpan.textContent=time;
+
+          const subjectSpan=document.createElement("span");
+          subjectSpan.className="month-subject";
+          subjectSpan.textContent=subject ? subject.replace(/\n/g," ") : "";
+
+          line.appendChild(timeSpan);
+
+          if(subject){
+            line.appendChild(document.createTextNode(" · "));
+            line.appendChild(subjectSpan);
+          }
+
+          if(note){
+            const noteSpan=document.createElement("span");
+            noteSpan.className="month-note-inline";
+            noteSpan.textContent=" - " + note;
+            line.appendChild(noteSpan);
+          }
+
+          e.appendChild(line);
+          cell.appendChild(e);
+        }
+      });
+
+      if(!any){
+        const empty=document.createElement("div");
+        empty.className="empty-day";
+        empty.textContent="Sense anotacions";
+        cell.appendChild(empty);
+      }
+
+      grid.appendChild(cell);
+      d=addDays(d,1);
+    }
+    // Salt de divendres a dilluns
+    d=addDays(d,2);
+  }
+}
+
+function render(){
+  updateHeader();
+  if(currentMode==="week") renderWeek();
+  else renderMonth();
+}
+
+function setMode(mode){
+  currentMode=mode;
+  document.getElementById("weekView").style.display=mode==="week"?"block":"none";
+  document.getElementById("monthView").style.display=mode==="month"?"block":"none";
+  document.getElementById("weekViewBtn").classList.toggle("active",mode==="week");
+  document.getElementById("monthViewBtn").classList.toggle("active",mode==="month");
+  document.getElementById("clearPeriodBtn").textContent =
+    mode==="week" ? "Esborra notes de la setmana" : "Esborra notes del mes";
+  render();
+}
+
+document.getElementById("weekViewBtn").onclick=()=>setMode("week");
+document.getElementById("monthViewBtn").onclick=()=>setMode("month");
+
+document.getElementById("prevBtn").onclick=()=>{
+  if(currentMode==="week") currentMonday=addDays(currentMonday,-7);
+  else currentMonth=addMonths(currentMonth,-1);
+  render();
+  window.scrollTo({top:0,behavior:"smooth"});
+};
+document.getElementById("nextBtn").onclick=()=>{
+  if(currentMode==="week") currentMonday=addDays(currentMonday,7);
+  else currentMonth=addMonths(currentMonth,1);
+  render();
+  window.scrollTo({top:0,behavior:"smooth"});
+};
+document.getElementById("todayBtn").onclick=()=>{
+  currentMonday=mondayOf(new Date());
+  currentMonth=new Date(new Date().getFullYear(),new Date().getMonth(),1);
+  render();
+};
+
+document.getElementById("printBtn").onclick=()=>{
+  document.body.classList.remove("print-week","print-month");
+  document.body.classList.add(currentMode==="week" ? "print-week" : "print-month");
+  window.print();
+};
+window.addEventListener("afterprint",()=>{
+  document.body.classList.remove("print-week","print-month");
+});
+
+document.getElementById("exportBtn").onclick=()=>{
+  const data={};
+  for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i);
+    if(k && k.startsWith("agenda:")) data[k]=localStorage.getItem(k);
+  }
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="copia_agenda_escolar.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+document.getElementById("importFake").onclick=()=>document.getElementById("importFile").click();
+document.getElementById("importFile").addEventListener("change",async(e)=>{
+  const file=e.target.files[0];
+  if(!file) return;
+  try{
+    const data=JSON.parse(await file.text());
+    Object.entries(data).forEach(([k,v])=>{
+      if(k.startsWith("agenda:")) localStorage.setItem(k,v);
+    });
+    alert("Còpia importada correctament.");
+    render();
+  }catch{
+    alert("No s'ha pogut llegir la còpia.");
+  }
+  e.target.value="";
+});
+
+document.getElementById("clearPeriodBtn").onclick=()=>{
+  const msg=currentMode==="week"
+    ? "Vols esborrar totes les notes d'aquesta setmana?"
+    : "Vols esborrar totes les notes d'aquest mes?";
+  if(!confirm(msg)) return;
+
+  if(currentMode==="week"){
+    for(let day=1;day<=5;day++){
+      const date=addDays(currentMonday,day-1);
+      schedule[day].forEach(([time])=>{
+        if(time!=="BREAK"){
+          const k=keyFor(date,time);
+          localStorage.removeItem(k);
+          if(window.firebaseSyncDelete) window.firebaseSyncDelete(k);
+        }
+      });
+    }
+  }else{
+    const y=currentMonth.getFullYear(), m=currentMonth.getMonth();
+    const last=new Date(y,m+1,0).getDate();
+    for(let day=1;day<=last;day++){
+      const date=new Date(y,m,day);
+      const wd=date.getDay();
+      if(wd>=1 && wd<=5){
+        schedule[wd].forEach(([time])=>{
+          if(time!=="BREAK"){
+            const k=keyFor(date,time);
+            localStorage.removeItem(k);
+            if(window.firebaseSyncDelete) window.firebaseSyncDelete(k);
+          }
+        });
+      }
+    }
+  }
+  render();
+};
+
+window.renderAgenda = render;
+setMode("week");
+</script>
+
+<script type="module">
+/*
+  SINCRONITZACIÓ FIREBASE
+  -----------------------
+  1. Crea un projecte a Firebase.
+  2. Activa Authentication > Google.
+  3. Crea Cloud Firestore.
+  4. Copia la configuració de la teva app web aquí sota.
+*/
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+import {
+  getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+import {
+  getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot
+} from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBPmWYXve8QPyti1clLlNgFBIfNkKhJmQo",
+  authDomain: "agenda-marta-educem.firebaseapp.com",
+  projectId: "agenda-marta-educem",
+  storageBucket: "agenda-marta-educem.firebasestorage.app",
+  messagingSenderId: "233302533347",
+  appId: "1:233302533347:web:74634020ebe08fc77951d6"
+};
+
+const statusEl = document.getElementById("syncStatus");
+const loginBtn = document.getElementById("googleLoginBtn");
+const logoutBtn = document.getElementById("googleLogoutBtn");
+
+function setStatus(text, type="warn"){
+  statusEl.textContent = text;
+  statusEl.className = "sync-status " + type;
+}
+
+const configured =
+  firebaseConfig.apiKey &&
+  !firebaseConfig.apiKey.startsWith("POSA_AQUI_") &&
+  firebaseConfig.projectId &&
+  !firebaseConfig.projectId.startsWith("POSA_AQUI_");
+
+if(!configured){
+  setStatus("Firebase pendent de configurar", "warn");
+  loginBtn.addEventListener("click", () => {
+    alert("Primer cal enganxar la configuració del teu projecte Firebase dins del fitxer HTML.");
+  });
+} else {
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const provider = new GoogleAuthProvider();
+
+  let unsubscribeNotes = null;
+  let currentUser = null;
+  let applyingRemote = false;
+
+  function noteDocRef(key){
+    return doc(db, "users", currentUser.uid, "agendaNotes", encodeURIComponent(key));
+  }
+
+  window.firebaseSyncSet = async (key, value) => {
+    if(!currentUser || applyingRemote) return;
+    try{
+      await setDoc(noteDocRef(key), {
+        key,
+        value,
+        updatedAt: new Date().toISOString()
+      });
+      setStatus("Sincronitzat", "ok");
+    }catch(err){
+      console.error(err);
+      setStatus("Error de sincronització", "err");
+    }
+  };
+
+  window.firebaseSyncDelete = async (key) => {
+    if(!currentUser || applyingRemote) return;
+    try{
+      await deleteDoc(noteDocRef(key));
+      setStatus("Sincronitzat", "ok");
+    }catch(err){
+      console.error(err);
+      setStatus("Error de sincronització", "err");
+    }
+  };
+
+  loginBtn.addEventListener("click", async () => {
+    try{
+      await signInWithPopup(auth, provider);
+    }catch(err){
+      console.error(err);
+      setStatus("No s'ha pogut iniciar sessió", "err");
+    }
+  });
+
+  logoutBtn.addEventListener("click", async () => {
+    await signOut(auth);
+  });
+
+  onAuthStateChanged(auth, user => {
+    currentUser = user;
+
+    if(unsubscribeNotes){
+      unsubscribeNotes();
+      unsubscribeNotes = null;
+    }
+
+    if(!user){
+      loginBtn.style.display = "";
+      logoutBtn.style.display = "none";
+      setStatus("Sense sincronització", "warn");
+      return;
+    }
+
+    loginBtn.style.display = "none";
+    logoutBtn.style.display = "";
+    setStatus("Connectat: " + (user.email || "Google"), "ok");
+
+    const notesRef = collection(db, "users", user.uid, "agendaNotes");
+
+    unsubscribeNotes = onSnapshot(notesRef, snapshot => {
+      applyingRemote = true;
+
+      snapshot.docChanges().forEach(change => {
+        const data = change.doc.data();
+        const key = data.key || decodeURIComponent(change.doc.id);
+
+        if(change.type === "removed"){
+          localStorage.removeItem(key);
+        } else {
+          localStorage.setItem(key, data.value ?? "");
+        }
+      });
+
+      applyingRemote = false;
+      if(window.renderAgenda) window.renderAgenda();
+      setStatus("Sincronitzat", "ok");
+    }, err => {
+      console.error(err);
+      setStatus("Error de lectura de Firebase", "err");
+    });
+  });
+}
+</script>
+
+</body>
+</html>
