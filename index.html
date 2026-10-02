@@ -496,6 +496,41 @@ function updateHeader(){
     currentMode==="week" ? weekRangeLabel(currentMonday) : monthLabel(currentMonth);
 }
 
+// Conservem el camp actiu i ajornem els canvis remots fins al blur.
+const deferredNotes = new Map();
+function applySyncedNote(key, value){
+  if(typeof key !== "string" || !key.startsWith("agenda:")) return false;
+  const active = document.activeElement;
+  if(active && active.matches("textarea[data-storage-key]") && active.dataset.storageKey === key){
+    if((value ?? "") === active.value) deferredNotes.delete(key);
+    else deferredNotes.set(key, value);
+    return false;
+  }
+  const previous = localStorage.getItem(key);
+  if(value === null) localStorage.removeItem(key);
+  else localStorage.setItem(key, value);
+  document.querySelectorAll("textarea[data-storage-key]").forEach(ta => {
+    if(ta.dataset.storageKey !== key) return;
+    const text = value ?? "";
+    if(ta.value !== text) ta.value = text;
+    ta.parentElement.querySelector(".printText").textContent = text;
+  });
+  return previous !== value;
+}
+window.applyAgendaChanges = changes => {
+  let changed = false;
+  changes.forEach(({key, value}) => {
+    if(applySyncedNote(key, value)) changed = true;
+  });
+  if(changed && currentMode === "month") renderMonth();
+};
+window.addEventListener("storage", event => {
+  if(event.key && event.key.startsWith("agenda:")){
+    window.applyAgendaChanges([{key: event.key, value: event.newValue}]);
+    if(currentMode === "month") renderMonth();
+  }
+});
+
 function renderWeek(){
   const week=document.getElementById("week");
   week.innerHTML="";
@@ -543,7 +578,15 @@ function renderWeek(){
       ta.value=val;
       printText.textContent=val;
 
+      ta.addEventListener("blur",()=>{
+        if(!deferredNotes.has(key)) return;
+        const value = deferredNotes.get(key);
+        deferredNotes.delete(key);
+        applySyncedNote(key, value);
+      });
       ta.addEventListener("input",()=>{
+        // Una nova edició local té prioritat sobre el canvi ajornat.
+        deferredNotes.delete(key);
         localStorage.setItem(key,ta.value);
         printText.textContent=ta.value;
         if(window.firebaseSyncSet) window.firebaseSyncSet(key, ta.value);
@@ -894,19 +937,19 @@ if(!configured){
     unsubscribeNotes = onSnapshot(notesRef, snapshot => {
       applyingRemote = true;
 
-      snapshot.docChanges().forEach(change => {
-        const data = change.doc.data();
-        const key = data.key || decodeURIComponent(change.doc.id);
-
-        if(change.type === "removed"){
-          localStorage.removeItem(key);
-        } else {
-          localStorage.setItem(key, data.value ?? "");
-        }
-      });
-
-      applyingRemote = false;
-      if(window.renderAgenda) window.renderAgenda();
+      try{
+        const changes = [];
+        snapshot.docChanges().forEach(change => {
+          // Les escriptures locals ja són al camp i a localStorage.
+          if(change.doc.metadata.hasPendingWrites) return;
+          const data = change.doc.data();
+          const key = data.key || decodeURIComponent(change.doc.id);
+          changes.push({key, value: change.type === "removed" ? null : String(data.value ?? "")});
+        });
+        if(window.applyAgendaChanges) window.applyAgendaChanges(changes);
+      }finally{
+        applyingRemote = false;
+      }
       setStatus("Sincronitzat", "ok");
     }, err => {
       console.error(err);
